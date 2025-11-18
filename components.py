@@ -171,8 +171,11 @@ def display_search_llm_response(llm_response):
         if "page" in llm_response["context"][0].metadata:
             # ページ番号を取得
             main_page_number = llm_response["context"][0].metadata["page"]
-            # 「メインドキュメントのファイルパス」と「ページ番号」を表示
-            st.success(f"{main_file_path}", icon=icon)
+            # PDF の場合のみページ番号を付与して表示
+            if str(main_file_path).lower().endswith(".pdf"):
+                st.success(f"{main_file_path} （ページNo.{main_page_number}）", icon=icon)
+            else:
+                st.success(f"{main_file_path}", icon=icon)
         else:
             # 「メインドキュメントのファイルパス」を表示
             st.success(f"{main_file_path}", icon=icon)
@@ -307,8 +310,11 @@ def display_contact_llm_response(llm_response):
             if "page" in document.metadata:
                 # ページ番号を取得
                 page_number = document.metadata["page"]
-                # 「ファイルパス」と「ページ番号」
-                file_info = f"{file_path}"
+                # PDF の場合はページ番号を付与
+                if str(file_path).lower().endswith(".pdf"):
+                    file_info = f"{file_path} （ページNo.{page_number}）"
+                else:
+                    file_info = f"{file_path}"
             else:
                 # 「ファイルパス」のみ
                 file_info = f"{file_path}"
