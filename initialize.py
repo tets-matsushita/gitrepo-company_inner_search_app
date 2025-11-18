@@ -32,18 +32,23 @@ load_dotenv()
 # 関数定義
 ############################################################
 
+logger = logging.getLogger(__name__)
+
 def initialize():
-    """
-    画面読み込み時に実行する初期化処理
-    """
-    # 初期化データの用意
-    initialize_session_state()
-    # ログ出力用にセッションIDを生成
-    initialize_session_id()
-    # ログ出力の設定
-    initialize_logger()
-    # RAGのRetrieverを作成
-    initialize_retriever()
+    logger.info("initialize() 開始")
+    try:
+        # 初期化データの用意
+        initialize_session_state()
+        # ログ出力用にセッションIDを生成
+        initialize_session_id()
+        # ログ出力の設定
+        initialize_logger()
+        # RAGのRetrieverを作成
+        initialize_retriever()
+    except Exception as e:
+        logger.exception("initialize() 内で例外発生")
+        # 詳細をファイルにも書きたい場合は logger を設定してください
+        raise  # main.py 側でキャッチするため再スロー
 
 
 def initialize_logger():
