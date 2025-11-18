@@ -150,8 +150,8 @@ def initialize_retriever():
     print("===================")
 
     # ベクターストアの作成
-    # Chroma.from_documents は embedding_function=... を使う（実装に依存するため明示）
-    db = Chroma.from_documents(splitted_docs, embedding_function=embeddings)
+    # embedding（OpenAIEmbeddings のインスタンス）を位置引数で渡す
+    db = Chroma.from_documents(splitted_docs, embeddings)
 
     # デバッグ: Chroma に格納された件数（内部コレクションにアクセス）
     try:
