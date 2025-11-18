@@ -141,8 +141,23 @@ def initialize_retriever():
     # チャンク分割を実施
     splitted_docs = text_splitter.split_documents(docs_all)
 
+    # --- デバッグ出力: チャンク分割後の件数と先頭サンプル ---
+    print("=== split debug ===")
+    print(f"splitted_docs 件数: {len(splitted_docs)}")
+    for i, d in enumerate(splitted_docs[:5]):
+        src = d.metadata.get("source", "<no source>")
+        print(f"  [{i}] source={src} preview={d.page_content[:80]!r}")
+    print("===================")
+
     # ベクターストアの作成
-    db = Chroma.from_documents(splitted_docs, embedding=embeddings)
+    # Chroma.from_documents は embedding_function=... を使う（実装に依存するため明示）
+    db = Chroma.from_documents(splitted_docs, embedding_function=embeddings)
+
+    # デバッグ: Chroma に格納された件数（内部コレクションにアクセス）
+    try:
+        print("Chroma collection count:", db._collection.count())
+    except Exception as e:
+        print("Chroma count unavailable:", e)
 
     # ベクターストアを検索するRetrieverの作成
     """
@@ -242,7 +257,9 @@ def file_load(path, docs_all):
             except UnicodeDecodeError:
                 with open(path, "r", encoding="cp932", errors="ignore") as f:
                     text = f.read()
-            docs_all.append(LC_Document(page_content=text, metadata={"source": path}))
+            # metadata を他のローダーと揃える（source は / に正規化、page を 0 として付与）
+            norm_source = path.replace("\\", "/")
+            docs_all.append(LC_Document(page_content=text, metadata={"source": norm_source, "page": 0}))
             print(f"✓ txt を追加しました: {path}")
             return
 

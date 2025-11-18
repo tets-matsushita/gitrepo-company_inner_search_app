@@ -110,6 +110,23 @@ def get_llm_response(chat_message):
 
     # LLMへのリクエストとレスポンス取得
     llm_response = chain.invoke({"input": chat_message, "chat_history": st.session_state.chat_history})
+
+    # --- デバッグ出力: chain の戻り値内の context をログ出力 ---
+    try:
+        # context が存在する場合、参照されたドキュメントの source を表示
+        if llm_response and "context" in llm_response and llm_response["context"]:
+            sources = []
+            for doc in llm_response["context"]:
+                try:
+                    src = doc.metadata.get("source", "<no source>")
+                except Exception:
+                    src = "<metadata-unavailable>"
+                sources.append(src)
+            st.write("DEBUG: LLM referenced sources:", sources)
+            print("DEBUG: LLM referenced sources:", sources)
+    except Exception as e:
+        print("DEBUG: failed to dump llm_response context:", e)
+
     # LLMレスポンスを会話履歴に追加
     st.session_state.chat_history.extend([HumanMessage(content=chat_message), llm_response["answer"]])
 
