@@ -124,6 +124,12 @@ def display_conversation_log():
                                 icon = utils.get_source_icon(sub_choice['source'])
                                 # 参照元ドキュメントのページ番号が取得できた場合にのみ、ページ番号を表示
                                 if "page_number" in sub_choice:
+                                    try:
+                                        disp_sub_page = int(sub_choice['page_number'])
+                                    except Exception:
+                                        disp_sub_page = sub_choice['page_number']
+                                    if isinstance(disp_sub_page, int):
+                                        disp_sub_page = disp_sub_page + 1
                                     st.info(f"{sub_choice['source']} （ページNo.{disp_sub_page}）", icon=icon)
                                 else:
                                     st.info(f"{sub_choice['source']}", icon=icon)

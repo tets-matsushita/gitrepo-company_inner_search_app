@@ -18,6 +18,8 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain.schema import Document as LC_Document
+# 追加: Webページ読み込み用ローダーの import
+from langchain_community.document_loaders import WebBaseLoader
 import constants as ct
 
 
