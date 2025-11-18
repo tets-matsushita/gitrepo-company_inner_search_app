@@ -14,11 +14,9 @@ import unicodedata
 from dotenv import load_dotenv
 import streamlit as st
 from docx import Document
-from langchain_community.document_loaders import WebBaseLoader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
-# 追加 import（LangChain の Document を使って docs_all に格納）
 from langchain.schema import Document as LC_Document
 import constants as ct
 
@@ -182,64 +180,81 @@ def load_data_sources():
     # 通常読み込みのデータソースにWebページのデータを追加
     docs_all.extend(web_docs_all)
 
+    # （読み込み処理実行後に追加）
+    print("=== 読み込み完了デバッグ ===")
+    print(f"docs_all 件数: {len(docs_all)}")
+    if len(docs_all) > 0:
+        print("先頭ドキュメント metadata:", docs_all[0].metadata)
+        print("先頭ドキュメント content preview:", docs_all[0].page_content[:200])
+    print("=========================")
+
     return docs_all
 
 
 def recursive_file_check(path, docs_all):
     """
-    RAGの参照先となるデータソースの読み込み
-
-    Args:
-        path: 読み込み対象のファイル/フォルダのパス
-        docs_all: データソースを格納する用のリスト
+    フォルダを再帰的に探索して、対応する拡張子を file_load に渡す。
+    対象外フォルダ（.db や データベース化済み 等）はスキップする。
     """
-    # パスがフォルダかどうかを確認
     if os.path.isdir(path):
-        # フォルダの場合、フォルダ内のファイル/フォルダ名の一覧を取得
-        files = os.listdir(path)
-        # 各ファイル/フォルダに対して処理
-        for file in files:
-            # ファイル/フォルダ名だけでなく、フルパスを取得
-            full_path = os.path.join(path, file)
-            # フルパスを渡し、再帰的にファイル読み込みの関数を実行
-            recursive_file_check(full_path, docs_all)
+        base = os.path.basename(path)
+        if base in ["データベース化済み", ".db"]:
+
+            # スキップ
+            return
+        for name in os.listdir(path):
+            recursive_file_check(os.path.join(path, name), docs_all)
     else:
-        # パスがファイルの場合、ファイル読み込み
-        file_load(path, docs_all)
+        # ファイルの場合、拡張子を小文字で判定
+        ext = os.path.splitext(path)[1].lower()
+        if ext in ct.SUPPORTED_EXTENSIONS:
+            print(f"▶ 読み込み対象ファイル: {path}")
+            file_load(path, docs_all)
+        else:
+            # .txt の場合は TextLoader entry があるはずだが、念のため拡張子直接判定も可能
+            if ext == ".txt":
+                print(f"▶ 読み込み対象（txt）: {path}")
+                file_load(path, docs_all)
+            else:
+                print(f"⊘ スキップ（非対応拡張子）: {path}")
 
 
 def file_load(path, docs_all):
     """
-    ファイル内のデータ読み込み
-
-    Args:
-        path: ファイルパス
-        docs_all: データソースを格納する用のリスト
+    単一ファイルを読み込み、docs_all に LangChain の Document 形式で追加する。
+    - .txt は encoding を UTF-8 で試し、失敗したら cp932 を fallback。
+    - 他は constants.SUPPORTED_EXTENSIONS のローダーを利用する。
     """
-    # ファイルの拡張子を取得（小文字化して比較）
-    file_extension = os.path.splitext(path)[1].lower()
-    # ファイル名（拡張子を含む）を取得
-    file_name = os.path.basename(path)
+    ext = os.path.splitext(path)[1].lower()
+    try:
+        if ext == ".txt":
+            # txt は直接読み込んで Document にする（encoding fallback 対応）
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    text = f.read()
+            except UnicodeDecodeError:
+                with open(path, "r", encoding="cp932", errors="ignore") as f:
+                    text = f.read()
+            docs_all.append(LC_Document(page_content=text, metadata={"source": path}))
+            print(f"✓ txt を追加しました: {path}")
+            return
 
-    # ---- 追加: .txt を直接読み込んで Document 化 ----
-    if file_extension == ".txt":
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                text = f.read()
-        except UnicodeDecodeError:
-            # 万一 UTF-8 で読めない場合は cp932 を試す（Windows の日本語txt対応）
-            with open(path, "r", encoding="cp932", errors="ignore") as f:
-                text = f.read()
-        # LangChain の Document として格納（metadata に source を付与）
-        docs_all.append(LC_Document(page_content=text, metadata={"source": path}))
-        return
+        # その他の対応拡張子は constants で定義されたローダーを使う
+        loader_ctor = ct.SUPPORTED_EXTENSIONS.get(ext)
+        if loader_ctor is None:
+            print(f"⊘ ローダが未定義: {path}")
+            return
 
-    # 想定していたファイル形式の場合のみ読み込む
-    if file_extension in ct.SUPPORTED_EXTENSIONS:
-        # ファイルの拡張子に合ったdata loaderを使ってデータ読み込み
-        loader = ct.SUPPORTED_EXTENSIONS[file_extension](path)
-        docs = loader.load()
-        docs_all.extend(docs)
+        loader = loader_ctor(path)
+        loaded = loader.load()
+        if not loaded:
+            print(f"⚠️ ローダは成功したがドキュメント0件: {path}")
+        else:
+            docs_all.extend(loaded)
+            print(f"✓ ローダで読み込み完了: {path} (追加件数={len(loaded)})")
+
+    except Exception as e:
+        print(f"⚠️ file_load エラー: path={path} error={e}")
 
 
 def adjust_string(s):

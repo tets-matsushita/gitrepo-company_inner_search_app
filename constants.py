@@ -5,8 +5,7 @@
 ############################################################
 # ライブラリの読み込み
 ############################################################
-from langchain_community.document_loaders import PyMuPDFLoader, Docx2txtLoader, TextLoader
-from langchain_community.document_loaders.csv_loader import CSVLoader
+from langchain_community.document_loaders import PyMuPDFLoader, Docx2txtLoader, TextLoader, CSVLoader
 
 
 ############################################################
@@ -51,7 +50,7 @@ SUPPORTED_EXTENSIONS = {
     ".pdf": PyMuPDFLoader,
     ".docx": Docx2txtLoader,
     ".csv": lambda path: CSVLoader(path, encoding="utf-8"),
-    # 追加: .txt ファイルを読み込む（UTF-8）
+    # 追加: .txt を読み込む（UTF-8、必要なら cp932 で再試行する処理は initialize側で行う）
     ".txt": lambda path: TextLoader(path, encoding="utf-8")
 }
 WEB_URL_LOAD_TARGETS = [
