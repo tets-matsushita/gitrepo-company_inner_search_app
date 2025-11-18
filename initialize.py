@@ -18,6 +18,8 @@ from langchain_community.document_loaders import WebBaseLoader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
+# 追加 import（LangChain の Document を使って docs_all に格納）
+from langchain.schema import Document as LC_Document
 import constants as ct
 
 
@@ -214,10 +216,23 @@ def file_load(path, docs_all):
         path: ファイルパス
         docs_all: データソースを格納する用のリスト
     """
-    # ファイルの拡張子を取得
-    file_extension = os.path.splitext(path)[1]
+    # ファイルの拡張子を取得（小文字化して比較）
+    file_extension = os.path.splitext(path)[1].lower()
     # ファイル名（拡張子を含む）を取得
     file_name = os.path.basename(path)
+
+    # ---- 追加: .txt を直接読み込んで Document 化 ----
+    if file_extension == ".txt":
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                text = f.read()
+        except UnicodeDecodeError:
+            # 万一 UTF-8 で読めない場合は cp932 を試す（Windows の日本語txt対応）
+            with open(path, "r", encoding="cp932", errors="ignore") as f:
+                text = f.read()
+        # LangChain の Document として格納（metadata に source を付与）
+        docs_all.append(LC_Document(page_content=text, metadata={"source": path}))
+        return
 
     # 想定していたファイル形式の場合のみ読み込む
     if file_extension in ct.SUPPORTED_EXTENSIONS:
