@@ -98,9 +98,16 @@ def display_conversation_log():
 
                         # 参照元のありかに応じて、適したアイコンを取得
                         icon = utils.get_source_icon(message['content']['main_file_path'])
-                        # 参照元ドキュメントのページ番号が取得できた場合にのみ、ページ番号を表示
+                        # ページ番号が取得できた場合、その値を人間向けに +1 して表示
                         if "main_page_number" in message["content"]:
-                            st.success(f"{message['content']['main_file_path']}", icon=icon)
+                            try:
+                                disp_main_page = int(message["content"]["main_page_number"])
+                            except Exception:
+                                disp_main_page = message["content"]["main_page_number"]
+                            # 0始まりを補正（整数なら +1）
+                            if isinstance(disp_main_page, int):
+                                disp_main_page = disp_main_page + 1
+                            st.success(f"{message['content']['main_file_path']} （ページNo.{disp_main_page}）", icon=icon)
                         else:
                             st.success(f"{message['content']['main_file_path']}", icon=icon)
                         
@@ -117,7 +124,7 @@ def display_conversation_log():
                                 icon = utils.get_source_icon(sub_choice['source'])
                                 # 参照元ドキュメントのページ番号が取得できた場合にのみ、ページ番号を表示
                                 if "page_number" in sub_choice:
-                                    st.info(f"{sub_choice['source']}", icon=icon)
+                                    st.info(f"{sub_choice['source']} （ページNo.{disp_sub_page}）", icon=icon)
                                 else:
                                     st.info(f"{sub_choice['source']}", icon=icon)
                     # ファイルのありかの情報が取得できなかった場合、LLMからの回答のみ表示
@@ -167,7 +174,7 @@ def display_search_llm_response(llm_response):
         
         # 参照元のありかに応じて、適したアイコンを取得
         icon = utils.get_source_icon(main_file_path)
-        # ページ番号が取得できた場合のみ、ページ番号を表示（ドキュメントによっては取得できない場合がある）
+        # ページ番号が取得できた場合、その値を人間向けに +1 して表示
         if "page" in llm_response["context"][0].metadata:
             # ページ番号を取得
             main_page_number = llm_response["context"][0].metadata["page"]
@@ -230,8 +237,14 @@ def display_search_llm_response(llm_response):
                 icon = utils.get_source_icon(sub_choice['source'])
                 # ページ番号が取得できない場合のための分岐処理
                 if "page_number" in sub_choice:
+                    try:
+                        disp_sub_page = int(sub_choice['page_number'])
+                    except Exception:
+                        disp_sub_page = sub_choice['page_number']
+                    if isinstance(disp_sub_page, int):
+                        disp_sub_page = disp_sub_page + 1
                     # 「サブドキュメントのファイルパス」と「ページ番号」を表示
-                    st.info(f"{sub_choice['source']}", icon=icon)
+                    st.info(f"{sub_choice['source']} （ページNo.{disp_sub_page}）", icon=icon)
                 else:
                     # 「サブドキュメントのファイルパス」を表示
                     st.info(f"{sub_choice['source']}", icon=icon)
@@ -308,11 +321,18 @@ def display_contact_llm_response(llm_response):
 
             # ページ番号が取得できた場合のみ、ページ番号を表示（ドキュメントによっては取得できない場合がある）
             if "page" in document.metadata:
-                # ページ番号を取得
-                page_number = document.metadata["page"]
-                # PDF の場合はページ番号を付与
+                try:
+                    page_number = int(document.metadata["page"])
+                except Exception:
+                    page_number = document.metadata["page"]
+                # PDF の場合はページ番号を付与（人間向けに +1）
+                if isinstance(page_number, int):
+                    display_page = page_number + 1
+                else:
+                    display_page = page_number
+
                 if str(file_path).lower().endswith(".pdf"):
-                    file_info = f"{file_path} （ページNo.{page_number}）"
+                    file_info = f"{file_path} （ページNo.{display_page}）"
                 else:
                     file_info = f"{file_path}"
             else:
