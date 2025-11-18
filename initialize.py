@@ -124,7 +124,10 @@ def initialize_retriever():
         doc.page_content = adjust_string(doc.page_content)
         for key in doc.metadata:
             doc.metadata[key] = adjust_string(doc.metadata[key])
-    
+        # --- 追加: source のパス区切りを統一（\ を / に変換） ---
+        if "source" in doc.metadata and isinstance(doc.metadata["source"], str):
+            doc.metadata["source"] = doc.metadata["source"].replace("\\", "/")
+
     # 埋め込みモデルの用意
     embeddings = OpenAIEmbeddings()
     

@@ -8,8 +8,9 @@
 import os
 from dotenv import load_dotenv
 import streamlit as st
+import logging
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.schema import HumanMessage
+from langchain.schema import HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
@@ -111,9 +112,8 @@ def get_llm_response(chat_message):
     # LLMへのリクエストとレスポンス取得
     llm_response = chain.invoke({"input": chat_message, "chat_history": st.session_state.chat_history})
 
-    # --- デバッグ出力: chain の戻り値内の context をログ出力 ---
+    # --- デバッグ出力: chain の戻り値内の context をログ出力（画面には表示しない） ---
     try:
-        # context が存在する場合、参照されたドキュメントの source を表示
         if llm_response and "context" in llm_response and llm_response["context"]:
             sources = []
             for doc in llm_response["context"]:
@@ -122,12 +122,14 @@ def get_llm_response(chat_message):
                 except Exception:
                     src = "<metadata-unavailable>"
                 sources.append(src)
-            st.write("DEBUG: LLM referenced sources:", sources)
+            # 画面表示は止め、ログにのみ出す（ユーザ向けの不要な情報表示を抑制）
+            logging.debug("LLM referenced sources: %s", sources)
             print("DEBUG: LLM referenced sources:", sources)
     except Exception as e:
+        logging.debug("failed to dump llm_response context: %s", e)
         print("DEBUG: failed to dump llm_response context:", e)
 
-    # LLMレスポンスを会話履歴に追加
-    st.session_state.chat_history.extend([HumanMessage(content=chat_message), llm_response["answer"]])
+    # LLMレスポンスを会話履歴に追加（HumanMessage / AIMessage で統一）
+    st.session_state.chat_history.extend([HumanMessage(content=chat_message), AIMessage(content=llm_response["answer"])])
 
     return llm_response
